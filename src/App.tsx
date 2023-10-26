@@ -1,39 +1,127 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import "./App.css";
+import {
+  Button,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Stack,
+  Container,
+} from "@chakra-ui/react";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import * as yup from "yup";
+import {
+  MultiValuesInput,
+  OnAddItemProps,
+  OnRemoveItemProps,
+} from "./multi-values-input";
+
+type FormValues = {
+  synonymsList: string[];
+};
+
+const schema = yup.object().shape({
+  synonymsList: yup.array().of(yup.string()),
+});
+
+const defaultValues: FormValues = {
+  synonymsList: [],
+};
 
 function App() {
-  const [count, setCount] = useState(0);
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    setError,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
+    mode: "onBlur",
+    reValidateMode: "onChange",
+    resolver: yupResolver(schema),
+    defaultValues,
+  });
+
+  const synonymsListValue = watch("synonymsList");
+
+  const onSynonymListAdd = ({ value, clearInput }: OnAddItemProps) => {
+    if (!value) return;
+
+    const isSynonymExists = synonymsListValue?.find((s) => s === value);
+    if (isSynonymExists)
+      return setError(
+        "synonymsList",
+        { message: "Synonym already exists" },
+        { shouldFocus: true },
+      );
+
+    setValue("synonymsList", [...synonymsListValue, value], {
+      shouldValidate: true,
+    });
+
+    // Should be called to empty the input after success add
+    clearInput();
+  };
+
+  const onSynonymListRemove = ({ item }: OnRemoveItemProps) => {
+    setValue(
+      "synonymsList",
+      synonymsListValue.filter((s) => s !== item),
+      { shouldValidate: true },
+    );
+  };
+
+  const onSubmit: SubmitHandler<FormValues> = (data) => {
+    console.log(data);
+  };
 
   return (
-    <div className="App">
-      <div>
-        <a href="https://reactjs.org" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-        </a>
-      </div>
-      <h1>React + Vite</h1>
-      <h2>On CodeSandbox!</h2>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR.
-        </p>
+    <Container mt="6">
+      <Stack
+        as="form"
+        id="addSynonymsForm"
+        spacing="lg"
+        align="end"
+        w="full"
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+      >
+        <Controller
+          control={control}
+          name="synonymsList"
+          render={() => (
+            <FormControl isInvalid={!!errors.synonymsList}>
+              <FormLabel>Synonyms</FormLabel>
 
-        <p>
-          Tip: you can use the inspector button next to address bar to click on
-          components in the preview and open the code in the editor!
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </div>
+              <MultiValuesInput.Input
+                variant="outline"
+                placeholder="Add new synonym"
+                type="text"
+                onAddItem={onSynonymListAdd}
+              />
+
+              <FormErrorMessage>
+                {errors.synonymsList?.message}
+              </FormErrorMessage>
+
+              <MultiValuesInput.List
+                valuesArray={synonymsListValue}
+                onRemoveItem={onSynonymListRemove}
+              />
+            </FormControl>
+          )}
+        />
+
+        <Button
+          variant="solid"
+          colorScheme="red"
+          type="submit"
+          form="addSynonymsForm"
+        >
+          Submit
+        </Button>
+      </Stack>
+    </Container>
   );
 }
 
